@@ -44,7 +44,7 @@ class App extends React.Component {
 
 class Player extends React.Component {
     random() { return reach.hasRandom.random(); }
-    async getHanmd() {
+    async getHand() {
         const hand = await new Promise(resolveHandP => {
             this.setState({view: 'GetHand', playable: true, resolveHandP });
         });

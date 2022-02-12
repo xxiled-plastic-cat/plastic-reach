@@ -1,29 +1,38 @@
-import {loadStdlib} from '@reach-sh/stdlib';
+import { loadStdlib } from '@reach-sh/stdlib';
 import * as backend from './build/index.main.mjs';
-const stdlib = loadStdlib(process.env);
 
-(async () => {
-  const startingBalance = stdlib.parseCurrency(100);
+const stdlib = loadStdlib();
+const startingBalance = stdlib.parseCurrency(100);
 
-  const [ accAlice, accBob ] =
-    await stdlib.newTestAccounts(2, startingBalance);
-  console.log('Hello, Alice and Bob!');
+const accAlice = await stdlib.newTestAccount(startingBalance);
+const accBob = await stdlib.newTestAccount(startingBalance);
 
-  console.log('Launching...');
-  const ctcAlice = accAlice.contract(backend);
-  const ctcBob = accBob.contract(backend, ctcAlice.getInfo());
+const getBalance = async (who) =>
+      stdlib.formatCurrency(await stdlib.balanceOf(who), 4);
+const beforeAlice = await getBalance(accAlice);
+const beforeBob = await getBalance(accBob);
 
-  console.log('Starting backends...');
-  await Promise.all([
-    backend.Alice(ctcAlice, {
-      ...stdlib.hasRandom,
-      // implement Alice's interact object here
-    }),
-    backend.Bob(ctcBob, {
-      ...stdlib.hasRandom,
-      // implement Bob's interact object here
-    }),
-  ]);
+const ctcAlice = accAlice.contract(backend);
+const ctcBob = accBob.contract(backend, ctcAlice.getInfo());
 
-  console.log('Goodbye, Alice and Bob!');
-})();
+const thePass = stdlib.randomUInt();
+
+await Promise.all([
+  backend.Alice(ctcAlice, {
+    amt: stdlib.parseCurrency(25),
+    pass: thePass,
+  }),
+  backend.Bob(ctcBob, {
+    getPassword: () => {
+      console.log(`Bob asked to give the preimage.`);
+      console.log(`Returning: ${thePass}`);
+      return thePass;
+    },
+  }),
+]);
+
+const afterAlice = await getBalance(accAlice);
+const afterBob = await getBalance(accBob);
+
+console.log(`Alice went from ${beforeAlice} to ${afterAlice}.`);
+console.log(`Bob went from ${beforeBob} to ${afterBob}.`);
