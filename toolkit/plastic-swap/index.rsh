@@ -16,21 +16,21 @@ export const main = Reach.App(
 
     
     Alice.only(() => {
-      const [ nftId, platformAmt, nftAmount ] = declassify(interact.getDeal());
+      const [ gatorToken, platformAmt, gatorAmount ] = declassify(interact.getDeal());
     });
 
-    Alice.publish(nftId, platformAmt, nftAmount)
+    Alice.publish(gatorToken, platformAmt, gatorAmount)
       .pay(platformAmt);
       commit();
 
     Bob.only(() => {
-      interact.acceptDeal([nftId, platformAmt, nftAmount ]);     
+      interact.acceptDeal([gatorToken, platformAmt, gatorAmount ]);     
       });
 
-      Bob.pay([[nftAmount, nftId]]);
+      Bob.pay([[gatorAmount, gatorToken]]);
       
       transfer(platformAmt).to(Bob);
-      transfer(nftAmount, nftId).to(Alice);
+      transfer(gatorAmount, gatorToken).to(Alice);
       commit(); 
 
   exit();
