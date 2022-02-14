@@ -15,6 +15,8 @@ const createAcc = await ask.ask(
   `Would you like to create an account?`,
   ask.yesno
 );
+
+
 if (createAcc) {
   acc = await stdlib.newTestAccount(stdlib.parseCurrency(1000));
 } else {
@@ -25,10 +27,12 @@ if (createAcc) {
   acc = await stdlib.newAccountFromSecret(secret);
   }
 let ctc = null;
+
 if (isAlice) {
+  console.log(`Getting account and contract`);
     ctc = acc.contract(backend);
-    ctc.getInfo().then((info) => {
-    console.log(`The contract is deployed as = ${JSON.stringify(info)}`); });
+    const info = ctc.getInfo();
+    console.log(`The contract is deployed as = ${JSON.stringify(info)}`);
   } else { //for Bob
     const info = await ask.ask(
       `Please paste the contract information:`,
@@ -46,17 +50,25 @@ if ( stdlib.connector === 'ETH' || stdlib.connector === 'CFX' ) {
   accAlice.setGasLimit(myGasLimit);
   accBob.setGasLimit(myGasLimit);
 } else if ( stdlib.connector == 'ALGO' ) {
-  await shouldFail(async () => await gator.mint(accAlice, startingBalance));
-  console.log(`Opt-ing in on ALGO`);
-  await accAlice.tokenAccept(gator.id);
-  await accBob.tokenAccept(gator.id);
+  
+  console.log(`Opt-ing in to Gator`);
+  await acc.tokenAccept(gator.id);
+  console.log(`Opt-ing in complete`);
 }
-
-await gator.mint(accBob, startingBalance.mul(100));
+if(!isAlice) {
+  await gator.mint(acc, startingBalance.mul(100));
+}
+console.log(`setting up starting balance functions`);
 const fmt = (x) => stdlib.formatCurrency(x, 4);
-const algoBalance = async () => fmt(await stdlib.balanceOf(acc));
-const gatorBalance = async () => fmt(await stdlib.balanceOf(acc, gator));
-console.log(`Your account balance is: ${fmt(algoBalance)} Algo and ${fmt(gatorBalance)} GATOR`);
+const getAlgoBalance = async () => fmt(await stdlib.balanceOf(acc));
+const getGatorBalance = async () => fmt(await stdlib.balanceOf(acc, gator.id));
+console.log(`getting algo starting balance`);
+const algoBalance = await getAlgoBalance();
+console.log(`getting gator starting balance`);
+const gatorBalance = await getGatorBalance();
+console.log(`got balances`);
+console.log(`Your account balance is: ${algoBalance} Algo and ${gatorBalance} GATOR`);
+const interact = { };
 
 if(isAlice) {
   const platformAmt = await ask.ask(
@@ -68,18 +80,20 @@ if(isAlice) {
     stdlib.parseCurrency
   );
   interact.getDeal = async () => {
+    console.log(`Let's see if Bob thinks that's a good deal!`);
     return [ gator, platformAmt, gatorAmount ];
   }
 } else {
-    const acceptDeal = async ([ gator, platformAmt, gatorAmount ]) => {
+    interact.acceptDeal = async ([ gator, platformAmt, gatorAmount ]) => {
       const accepted = await ask.ask(
         `Will you accept the deal of ${fmt(platformAmt)} Algo for ${fmt(gatorAmount)} GATOR (id: ${gator})?`,
         ask.yesno
-      )};
+      )
 
       if(!accepted) {
         process.exit(0);
       }
+    };
 };
 
   
