@@ -39,7 +39,7 @@ if (isAlice) {
 }
 
 const fmt = (x) => stdlib.formatCurrency(x, 4);
-const getBalance = async () => fmt(await stdlib.balanceOf(acc));
+const getBalance = async () => y(await stdlib.balanceOf(acc));
 
 const before = await getBalance();
 console.log(`Your balance is ${before}`);

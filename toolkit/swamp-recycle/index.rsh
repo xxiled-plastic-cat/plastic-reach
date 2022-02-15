@@ -1,47 +1,62 @@
 'reach 0.1';
-'use strict';
 
-export const main = Reach.App(
-  { },
+const recycleParams = Tuple(UInt, Token);
+const setupParams = Tuple(UInt, Token, UInt);
+export const main = Reach.App(() => {
 
-  [Participant('Creator', {
-    // Specify Creator's interact interface here
-    seedAmt: UInt,
-    payoutCalc: UInt
-  }),
-  Participant('User', {
-    // Specify User's interact interface here
-    recycleToken: Token,
-    recycleAmount: UInt,
-    payout: UInt
-  })],
 
-  (Creator, User) => {
-
-    
-    Creator.only(() => {
-      const payoutCalc = declassify(interact.payoutCalc);
-      assume( payoutCalc > 1);
-      const seedAmt = declassify(interact.seedAmt);
-      assume( seedAmt > 1);
+    const Creator = Participant('Creator', {
+      // Specify Creator's interact interface here
+      getSetupValues: Fun([], setupParams),
+      getRemainingSupply: Fun([UInt, UInt], UInt)
     });
-    Creator.publish(payoutCalc, seedAmt)
-      .pay(seedAmt);
+    const User = Participant('User', {
+      // Specify User's interact interface here
+      getRecycling: Fun([], recycleParams)
+    });
+    init();
+
+    Creator.only(() => {
+      const [initialSupply, tokenId, ratio ] = declassify(interact.getSetupValues());   
+      
+    });
+    
+    Creator.publish(initialSupply, tokenId, ratio)
+    
+
     commit();
-
-
+    Creator.pay([[initialSupply, tokenId]]);
+    commit();
     User.only(() => {
-      const recycleAmount = declassify(interact.recycleAmount);
-      const recycleToken = declassify(interact.recycleToken);
-      const payout = recycleAmount / payoutCalc;
-      assume(payout < seedAmt);
+      const [recycleAmt, recycleTokenId] = declassify(interact.getRecycling());
+      
+    });
+    User.publish(recycleAmt, recycleTokenId)
+    
+    
+    var remainingSupply = 0;
+    invariant(balance() == balance());
+    while(remainingSupply > 0) {
+      commit();
+      
+      User.pay([[recycleAmt, recycleTokenId]]);
+      const payout = recycleAmt / ratio;
+      transfer(payout, recycleTokenId).to(User);
+      transfer(recycleAmt, recycleTokenId).to(Creator);
+      commit();
+      
+      Creator.only(() => {
+        const remaining = declassify(interact.getRemainingSupply(initialSupply, payout))
       });
-      User.publish(recycleToken, recycleAmount, payout)
-        .pay(recycleAmount);
-
+      Creator.publish(remaining);
+      
+      remainingSupply = remaining;
+      continue;
+    };
+    
+    
+    commit();
   
-  transfer(payout).to(User);
-  commit();
-
   exit();
+
 });

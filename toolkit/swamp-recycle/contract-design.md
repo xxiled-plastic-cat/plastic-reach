@@ -4,7 +4,7 @@
 A place for users to deposit unwanted, scam or rugpulled ASAs - including NFTs - and receive platform tokens in return
 
 ## How does it work?
-A user simply transfers the ASAs they want to offload to the contract, the contract then returns a random amount of platform tokens in the customisable range
+A user simply transfers the ASAs they want to offload to the contract, the contract then returns an amount of tokens equal to the ratio passed in
 
 ## Who are the participants?
 The creator of the smart contract who will seed it with the necessary platform tokens and set the token payout range
