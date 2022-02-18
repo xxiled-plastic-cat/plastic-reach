@@ -5,24 +5,51 @@ const stdlib = loadStdlib(process.env);
 (async () => {
   const startingBalance = stdlib.parseCurrency(100);
 
-  const [ accAlice, accBob ] =
+  const [ accSeller , accBuyer1 ] =
     await stdlib.newTestAccounts(2, startingBalance);
-  console.log('Hello, Alice and Bob!');
+  console.log('Hello all test accts');
 
   console.log('Launching...');
-  const ctcAlice = accAlice.contract(backend);
-  const ctcBob = accBob.contract(backend, ctcAlice.getInfo());
+  const ctcSeller = accSeller.contract(backend);
+  const ctcBuyer1 = accBuyer1.contract(backend, ctcSeller.getInfo());
+  /* const ctcBuyer2 = accBuyer2.contract(backend, ctcSeller.getInfo());
+  const ctcBuyer3 = accBuyer3.contract(backend, ctcSeller.getInfo()); */
+ 
+
+  const gCard = await stdlib.launchToken(accSeller, "Algogator Membership Card", "GCARD");
+  await accSeller.tokenAccept(gCard.id);
+  await accBuyer1.tokenAccept(gCard.id);
+  /* await accBuyer2.tokenAccept(gCard.id);
+  await accBuyer3.tokenAccept(gCard.id); */
+  await gCard.mint(accSeller, startingBalance.mul(100));
+  const mpay = ['Some', 10];
 
   console.log('Starting backends...');
   await Promise.all([
-    backend.Alice(ctcAlice, {
-      ...stdlib.hasRandom,
-      // implement Alice's interact object here
+    backend.Seller(ctcSeller, {
+     getMerchParams: async () => {
+       return [10, 1, gCard.id];
+     },   
+     getDeadline: async () => {
+       return { ETH: 100, ALGO: 1000, CFX: 1000 }[stdlib.connector];
+     }
     }),
-    backend.Bob(ctcBob, {
-      ...stdlib.hasRandom,
-      // implement Bob's interact object here
+    backend.Buyer(ctcBuyer1, {
+      getPayment:  async () => {
+        return mpay;
+      }
     }),
+    /* backend.Buyer(ctcBuyer2, {
+      getPayment:  async () => {
+        return 10;
+      }
+    }),
+    backend.Buyer(ctcBuyer3, {
+      getPayment:  async () => {
+        return 10;
+      }
+    }), */
+    
   ]);
 
   console.log('Goodbye, Alice and Bob!');

@@ -6,36 +6,37 @@ const common = {
   saleEnded: Fun([], Null)
 };
 
+
+
 // merchendise parameters - Price, Supply, tokenId
 const merchParams = Tuple(UInt, UInt, Token);
 
-export const main = Reach.App(
-  { },
+export const main = Reach.App(() => {
 
-  [Participant('Seller', {
+ const Seller = Participant('Seller', {
     ...common,
     // Specify Alice's interact interface here
     getMerchParams: Fun([], merchParams),
     getDeadline: Fun([], UInt),
-    vaultAddr: Address
-  }),
-  Participant('Buyer', {
+  });
+
+  const Buyer = Participant('Buyer', {
     ...common,
     getPayment: Fun([], MUInt)
-  }),
-  Participant('Vault', {
-    
-  })],
+  });
+
+  const plasticAPI = API('plasticAPI', {
+    buyMerch: Fun([UInt], UInt)
+  });
+
+  init();
   
-  (Seller, Buyer, Vault) => {
     Seller.only(() => {
       const [price, supply, tokenId] = declassify(interact.getMerchParams());
-      const vaultaddress = declassify(interact.vaultAddr);
       const dl = declassify(interact.getDeadline());
     });
 
-    Seller.publish(price, supply, tokenId, vaultaddress, dl);
-      Vault.set(vaultaddress);
+    Seller.publish(price, supply, tokenId, dl);
       commit();
     Buyer.publish();
     commit();
@@ -53,7 +54,7 @@ export const main = Reach.App(
       parallelReduce(0)
         .invariant(balance(tokenId) == (supply - numBought))
         .while(numBought < supply)
-        .case(Buyer,
+        .api(Buyer.buyMerch,
           () => {
              const mpmt = price != this ? declassify(interact.getPayment()) : MUnit.None();
             return ({
@@ -68,7 +69,7 @@ export const main = Reach.App(
             commit();
             Buyer.pay(price);
             transfer([[1, tokenId]]).to(this);
-            transfer(pmt).to(Vault);
+            transfer(pmt).to(Seller);
             each([Seller, Buyer], () => { interact.saleComplete(numBought +1); });           
             return numBought+1;
           } )
@@ -84,4 +85,5 @@ export const main = Reach.App(
           }
     commit();
     exit();
-  });
+  
+});
