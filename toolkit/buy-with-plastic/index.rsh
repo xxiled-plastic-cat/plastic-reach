@@ -28,7 +28,7 @@ export const main = Reach.App(() => {
   });
 
   const plasticAPI = API('plasticAPI', {
-    buyMerch: Fun([UInt], Null)
+    buyMerch: Fun([UInt], UInt)
   });
 
   init();
@@ -62,11 +62,12 @@ export const main = Reach.App(() => {
           },      
           (pmt) => pmt
           ,
-          (pmt, y) => {
+          (pmt, apiReturn) => {
             require(pmt == price);
             transfer([[1, tokenId]]).to(this);
             transfer(pmt).to(Seller);
-            Buyer.interact.saleComplete(numBought +1);           
+            Buyer.interact.saleComplete(numBought +1);   
+            apiReturn(numBought+1);      
             return numBought+1;
           } )
           .timeRemaining(timeRemaining());
