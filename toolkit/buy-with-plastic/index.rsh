@@ -15,7 +15,6 @@ export const main = Reach.App(() => {
 
  const Seller = Participant('Seller', {
     ...common,
-    // Specify Alice's interact interface here
     getMerchParams: Fun([], merchParams),
     getDeadline: Fun([], UInt),
     saleEnded: Fun([], UInt)
@@ -24,7 +23,6 @@ export const main = Reach.App(() => {
   const Buyer = Participant('Buyer', {
     ...common,
     getPayment: Fun([], MUInt)
-    //buyMerch: Fun([MUInt], Null)
   });
 
   const plasticAPI = API('plasticAPI', {
@@ -42,9 +40,6 @@ export const main = Reach.App(() => {
       commit();
     Buyer.publish();
     commit();
-    
-    //Keep contract open while supply > 0
-    //
     
     Seller.publish()
       .pay([[supply, tokenId]]);
