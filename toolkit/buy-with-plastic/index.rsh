@@ -2,14 +2,14 @@
 
 const MUInt = Maybe(UInt);
 const common = {
-  saleComplete: Fun([UInt], Null), 
-  saleEnded: Fun([], Null)
+  saleComplete: Fun([UInt], Null)
 };
 
 
 
 // merchendise parameters - Price, Supply, tokenId
 const merchParams = Tuple(UInt, UInt, Token);
+const paymentParams = Tuple(UInt, Token);
 
 export const main = Reach.App(() => {
 
@@ -18,15 +18,17 @@ export const main = Reach.App(() => {
     // Specify Alice's interact interface here
     getMerchParams: Fun([], merchParams),
     getDeadline: Fun([], UInt),
+    saleEnded: Fun([], UInt)
   });
 
   const Buyer = Participant('Buyer', {
     ...common,
     getPayment: Fun([], MUInt)
+    //buyMerch: Fun([MUInt], Null)
   });
 
   const plasticAPI = API('plasticAPI', {
-    buyMerch: Fun([UInt], UInt)
+    buyMerch: Fun([UInt], Null)
   });
 
   init();
@@ -48,35 +50,32 @@ export const main = Reach.App(() => {
       .pay([[supply, tokenId]]);
     commit();
     Seller.pay(1);
-
+ 
     const [timeRemaining, keepGoing] = makeDeadline(dl);
     const numBought = 
       parallelReduce(0)
         .invariant(balance(tokenId) == (supply - numBought))
         .while(numBought < supply)
-        .api(Buyer.buyMerch,
-          () => {
-             const mpmt = price != this ? declassify(interact.getPayment()) : MUnit.None();
-            return ({
-              when: maybe(mpmt, false, ((p) => p == price)),
-              msg: fromSome(mpmt, 0)
-            });            
-          },
+        .api(plasticAPI.buyMerch,    
+          (pmt) => {
+            assume(pmt == price); 
+          },      
           (pmt) => pmt
           ,
-          (pmt) => {
+          (pmt, y) => {
             require(pmt == price);
-            commit();
-            Buyer.pay(price);
             transfer([[1, tokenId]]).to(this);
             transfer(pmt).to(Seller);
-            each([Seller, Buyer], () => { interact.saleComplete(numBought +1); });           
+            Buyer.interact.saleComplete(numBought +1);           
             return numBought+1;
           } )
           .timeRemaining(timeRemaining());
-            
+            commit();
           
-
+          Seller.only(() => {
+            const totalSales = declassify(interact.saleEnded());
+          });
+          Seller.publish(totalSales);
           if(balance(tokenId) > 0){
             transfer([[balance(tokenId), tokenId]]).to(Seller) ; 
           }
