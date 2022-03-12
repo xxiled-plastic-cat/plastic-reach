@@ -15,14 +15,14 @@ export const main = Reach.App(() => {
 
  const Seller = Participant('Seller', {
     ...common,
+    // Specify Alice's interact interface here
     getMerchParams: Fun([], merchParams),
     getDeadline: Fun([], UInt),
     saleEnded: Fun([], UInt)
   });
 
   const Buyer = Participant('Buyer', {
-    ...common,
-    getPayment: Fun([], MUInt)
+    ...common
   });
 
   const plasticAPI = API('plasticAPI', {
@@ -41,10 +41,11 @@ export const main = Reach.App(() => {
     Buyer.publish();
     commit();
     
+  
     Seller.publish()
       .pay([[supply, tokenId]]);
     commit();
-    Seller.pay(1);
+    Seller.publish();
  
     const [timeRemaining, keepGoing] = makeDeadline(dl);
     const numBought = 

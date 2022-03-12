@@ -1,17 +1,18 @@
 import {loadStdlib} from '@reach-sh/stdlib';
+import * as ask from '@reach-sh/stdlib/ask.mjs';
 import * as backend from './build/index.main.mjs';
 const stdlib = loadStdlib(process.env);
 
-(async () => {
   const startingBalance = stdlib.parseCurrency(100);
 
-  const [ accSeller , accBuyer1 ] =
-    await stdlib.newTestAccounts(2, startingBalance);
+  const accSeller = await stdlib.newTestAccount(startingBalance);
+  const accBuyer1 = await stdlib.newTestAccount(startingBalance);
+
   console.log('Hello all test accts');
 
   console.log('Launching...');
   const ctcSeller = accSeller.contract(backend);
-  const ctcBuyer1 = accBuyer1.contract(backend, ctcSeller.getInfo());
+  
   /* const ctcBuyer2 = accBuyer2.contract(backend, ctcSeller.getInfo());
   const ctcBuyer3 = accBuyer3.contract(backend, ctcSeller.getInfo()); */
  
@@ -21,36 +22,67 @@ const stdlib = loadStdlib(process.env);
   await accBuyer1.tokenAccept(gCard.id);
   /* await accBuyer2.tokenAccept(gCard.id);
   await accBuyer3.tokenAccept(gCard.id); */
-  await gCard.mint(accSeller, startingBalance.mul(100));
-  const mpay = ['Some', 10];
+  await gCard.mint(accSeller, startingBalance.mul(1));
 
-  console.log('Starting backends...');
-  await Promise.all([
-    backend.Seller(ctcSeller, {
-     getMerchParams: async () => {
-       return [10, 1, gCard.id];
-     },   
-     getDeadline: async () => {
-       return { ETH: 100, ALGO: 1000, CFX: 1000 }[stdlib.connector];
-     }
-    }),
-    backend.Buyer(ctcBuyer1, {
-      getPayment:  async () => {
-        return mpay;
+  const getCreatorBalanceGCard = async () => (await stdlib.balanceOf(accSeller, gCard.id));
+  const getBalanceGCard = async () => (await stdlib.balanceOf(accBuyer1, gCard.id));
+
+  const isCreator = await ask.ask(
+    `Are you the creator?`,
+    ask.yesno
+  );
+  const interact = { ...stdlib.hasRandom };
+  let ctc = null;
+  if(isCreator) {
+    const creatorGCardBalance = await getCreatorBalanceGCard();
+    console.log(`You currently own ${creatorGCardBalance} membership cards`);
+
+    ctcSeller.getInfo().then((info) => {
+      console.log(`The contract is deployed as = ${JSON.stringify(info)}`); 
+    });
+
+      interact.getMerchParams = async () => {
+        console.log(`Getting merch params`);
+        return [10, 1, gCard.id];
+      };
+
+      interact.getDeadline = async () => {
+        return { ETH: 100, ALGO: 1000, CFX: 1000 }[stdlib.connector];
+      };
+      console.log(`Contract has been seeded by the creator ready for buyers!`);  
+
+  } else {
+    console.log(`Hello buyer!`);
+    const info = await ask.ask(
+      `Please paste the contract information:`,
+      JSON.parse
+    );
+    const ctcBuyer1 = accBuyer1.contract(backend, info);
+    const currentGCardBalance = await getBalanceGCard();
+    console.log(`You currently own ${currentGCardBalance} membership cards`);
+    if(currentGCardBalance == 0) {
+      const buy = await ask.ask(
+        `Would you like to buy and Algogator Membership Card?`,
+        ask.yesno
+      );
+      if(buy)
+      {
+
+        await ctcBuyer1.a.plasticAPI.buyMerch(10);
+
+        interact.saleComplete = async (sale) => {
+          console.log(`Sale complete!`);
+        };
+        const newGCardBalance = await getBalanceGCard();
+        console.log(`You now own ${newGCardBalance} membership cards!`);
       }
-    }),
-    /* backend.Buyer(ctcBuyer2, {
-      getPayment:  async () => {
-        return 10;
-      }
-    }),
-    backend.Buyer(ctcBuyer3, {
-      getPayment:  async () => {
-        return 10;
-      }
-    }), */
+    } else {
+      console.log(`You already own a m,embership card! Lucky you!`);
+    }
+  }
     
-  ]);
+  const part = isCreator ? ctcSeller.p.Seller : ctcSeller.p.Buyer;
+  await part(interact);
 
-  console.log('Goodbye, Alice and Bob!');
-})();
+  console.log('Thanks for buying!!');
+process.exit(0);
